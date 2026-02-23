@@ -106,21 +106,21 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="flex min-h-screen bg-slate-50/50">
+        <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50/50">
             <Sidebar />
-            <main className="flex-1 p-8">
+            <main className="flex-1 p-4 md:p-8 pb-24 lg:pb-8">
                 <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
-                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Resumen Administrativo</h2>
-                        <p className="text-muted-foreground font-medium mt-1">Panel de control de la Agencia Digital - Gestión {selectedYear}</p>
+                        <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight text-center md:text-left">Resumen Administrativo</h2>
+                        <p className="text-muted-foreground font-medium mt-1 text-sm md:text-base text-center md:text-left">Panel de control de la Agencia Digital - Gestión {selectedYear}</p>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center md:justify-end gap-3">
                         <div className="flex bg-white border border-slate-200 rounded-2xl p-1 shadow-sm">
                             <select
                                 value={selectedMonth}
                                 onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                                className="bg-transparent px-3 py-1.5 text-xs font-black text-slate-700 outline-none border-r border-slate-100"
+                                className="bg-transparent px-2 md:px-3 py-1.5 text-[10px] md:text-xs font-black text-slate-700 outline-none border-r border-slate-100"
                             >
                                 {Array.from({ length: 12 }).map((_, i) => (
                                     <option key={i + 1} value={i + 1}>{getMonthName(i)}</option>
@@ -129,7 +129,7 @@ export default function DashboardPage() {
                             <select
                                 value={selectedYear}
                                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                                className="bg-transparent px-3 py-1.5 text-xs font-black text-slate-700 outline-none"
+                                className="bg-transparent px-2 md:px-3 py-1.5 text-[10px] md:text-xs font-black text-slate-700 outline-none"
                             >
                                 {[0, 1].map(offset => (
                                     <option key={offset} value={new Date().getFullYear() - offset}>
@@ -141,10 +141,10 @@ export default function DashboardPage() {
 
                         <button
                             onClick={fetchStats}
-                            className="p-3 border border-slate-200 rounded-2xl hover:bg-white text-slate-400 hover:text-primary transition-all shadow-sm"
+                            className="p-3 border border-slate-200 rounded-2xl hover:bg-white text-slate-400 hover:text-primary transition-all shadow-sm bg-white"
                             title="Actualizar datos"
                         >
-                            <RefreshCw className={cn("w-5 h-5", loading && "animate-spin")} />
+                            <RefreshCw className={cn("w-4 h-4 md:w-5 md:h-5", loading && "animate-spin")} />
                         </button>
                     </div>
                 </header>
@@ -176,9 +176,9 @@ export default function DashboardPage() {
                 ) : stats && (
                     <>
                         {/* KPI Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-12">
                             {statCards.map((stat) => (
-                                <div key={stat.label} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-5 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                                <div key={stat.label} className="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col sm:flex-row items-center gap-3 sm:gap-5 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
                                     <div className={cn("p-4 rounded-2xl", stat.bg)}>
                                         <stat.icon className={cn("w-7 h-7", stat.color)} />
                                     </div>

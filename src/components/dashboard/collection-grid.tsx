@@ -295,9 +295,9 @@ export default function CollectionGrid() {
         <>
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col h-full">
                 {/* Header */}
-                <div className="p-4 border-b bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 flex-1">
-                        <div className="relative flex-1 max-w-md">
+                <div className="p-4 border-b bg-slate-50/50 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row items-center gap-4 flex-1">
+                        <div className="relative w-full sm:max-w-md">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                             <input
                                 type="text"
@@ -308,36 +308,38 @@ export default function CollectionGrid() {
                             />
                         </div>
                         {totalOverdue > 0 && (
-                            <div className="flex items-center gap-2 bg-rose-50 text-rose-600 px-4 py-2 rounded-xl border border-rose-100 text-[10px] font-black uppercase tracking-widest">
-                                <AlertTriangle className="w-3.5 h-3.5" />
+                            <div className="flex items-center justify-center gap-2 bg-rose-50 text-rose-600 px-4 py-2 rounded-xl border border-rose-100 text-[10px] font-black uppercase tracking-widest w-full sm:w-auto">
+                                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                                 {totalOverdue} vencidos
                             </div>
                         )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between sm:justify-end gap-2">
                         <button
                             onClick={() => fetchData()}
-                            className="p-2 border border-slate-200 rounded-xl hover:bg-white transition-colors text-slate-400 hover:text-primary"
+                            className="p-2 border border-slate-200 rounded-xl hover:bg-white transition-colors text-slate-400 hover:text-primary bg-white"
                             title="Actualizar datos"
                         >
-                            <RefreshCw className="w-4 h-4" />
+                            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
                         </button>
-                        <button
-                            onClick={handleExport}
-                            className="flex items-center gap-2 px-4 py-2 text-xs font-bold bg-primary text-white rounded-xl hover:opacity-90 transition-opacity shadow-sm"
-                            title="Descargar Excel/CSV"
-                        >
-                            <Download className="w-3.5 h-3.5" />
-                            Exportar
-                        </button>
-                        <button
-                            onClick={() => window.print()}
-                            className="hidden sm:flex items-center gap-2 px-4 py-2 text-xs font-bold bg-slate-800 text-white rounded-xl hover:opacity-90 transition-opacity shadow-sm"
-                            title="Imprimir vista actual"
-                        >
-                            <Printer className="w-3.5 h-3.5" />
-                            Imprimir
-                        </button>
+                        <div className="flex items-center gap-2 flex-1 sm:flex-initial">
+                            <button
+                                onClick={handleExport}
+                                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold bg-primary text-white rounded-xl hover:opacity-90 transition-opacity shadow-sm"
+                                title="Descargar Excel/CSV"
+                            >
+                                <Download className="w-3.5 h-3.5" />
+                                <span className="sm:inline">Exportar</span>
+                            </button>
+                            <button
+                                onClick={() => window.print()}
+                                className="hidden sm:flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold bg-slate-800 text-white rounded-xl hover:opacity-90 transition-opacity shadow-sm"
+                                title="Imprimir vista actual"
+                            >
+                                <Printer className="w-3.5 h-3.5" />
+                                <span className="sm:inline">Imprimir</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 

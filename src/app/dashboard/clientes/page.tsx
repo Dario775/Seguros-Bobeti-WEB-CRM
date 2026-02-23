@@ -164,21 +164,21 @@ export default function ClientesPage() {
     };
 
     return (
-        <div className="flex min-h-screen bg-background text-slate-900">
+        <div className="flex flex-col lg:flex-row min-h-screen bg-background text-slate-900">
             <Sidebar />
-            <main className="flex-1 p-8">
-                <header className="mb-10 flex items-center justify-between">
+            <main className="flex-1 p-4 md:p-8 pb-24 lg:pb-8">
+                <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
-                        <h2 className="text-3xl font-black tracking-tight flex items-center gap-3">
-                            <Users className="w-8 h-8 text-primary" />
+                        <h2 className="text-2xl md:text-3xl font-black tracking-tight flex items-center gap-3">
+                            <Users className="w-6 h-6 md:w-8 md:h-8 text-primary" />
                             Gestión de Asegurados
                         </h2>
-                        <p className="text-muted-foreground font-medium mt-1">Base de datos centralizada de clientes - Agencia Digital</p>
+                        <p className="text-muted-foreground font-medium mt-1 text-sm md:text-base">Base de datos centralizada de clientes - Agencia Digital</p>
                     </div>
                     {(userProfile?.role === "super_admin" || userProfile?.permissions?.clientes_crear) && (
                         <button
                             onClick={() => setCreateOpen(true)}
-                            className="flex items-center gap-2 px-6 py-3.5 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+                            className="flex items-center justify-center gap-2 px-6 py-3 md:py-3.5 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all w-full md:w-auto"
                         >
                             <UserPlus className="w-4 h-4" />
                             Nuevo Asegurado
@@ -187,22 +187,22 @@ export default function ClientesPage() {
                 </header>
 
                 <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div className="p-6 border-b flex items-center justify-between bg-slate-50/30 gap-4">
-                        <div className="relative max-w-sm w-full">
+                    <div className="p-4 md:p-6 border-b flex flex-col md:flex-row md:items-center justify-between bg-slate-50/30 gap-4">
+                        <div className="relative w-full md:max-w-sm">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                             <input
                                 type="text"
                                 placeholder="Buscar por nombre, DNI o teléfono..."
-                                className="w-full pl-12 pr-4 py-3 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all text-sm font-medium"
+                                className="w-full pl-12 pr-4 py-3 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all text-sm font-medium bg-white"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        <div className="flex items-center gap-3">
-                            <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                        <div className="flex items-center justify-between md:justify-end gap-3">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                 {filtered.length} registro{filtered.length !== 1 ? "s" : ""}
                             </span>
-                            <button onClick={fetchClients} className="p-2.5 border border-slate-200 rounded-xl hover:bg-white text-slate-400 hover:text-primary transition-all">
+                            <button onClick={fetchClients} className="p-2.5 border border-slate-200 rounded-xl hover:bg-white text-slate-400 hover:text-primary transition-all bg-white">
                                 <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
                             </button>
                         </div>
