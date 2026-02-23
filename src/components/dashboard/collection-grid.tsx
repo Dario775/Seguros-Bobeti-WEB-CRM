@@ -28,7 +28,8 @@ export default function CollectionGrid() {
     const [loading, setLoading] = useState(true);
     const [clients, setClients] = useState<any[]>([]);
     const [userProfile, setUserProfile] = useState<any>(null);
-    const [policiesMap, setPoliciesMap] = useState<Record<string, { amount: number, activeMonths: number[] }>>({});
+    const [policiesMap, setPoliciesMap] = useState<Record<string, { amount: number, activeMonths: number[], domains: string[] }>>({});
+    const [filterStatus, setFilterStatus] = useState<"all" | "overdue" | "paid">("all");
     const [messageTemplate, setMessageTemplate] = useState('');
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth() + 1; // 1-12
@@ -78,11 +79,12 @@ export default function CollectionGrid() {
             .select("client_id, monthly_amount, status, start_date, end_date")
             .in("status", ["vigente", "por_vencer"]);
 
-        const pMap: Record<string, { amount: number, activeMonths: number[], dueDay: number }> = {};
+        const pMap: Record<string, { amount: number, activeMonths: number[], dueDay: number, domains: string[] }> = {};
 
         (policiesData || []).forEach((p: any) => {
-            if (!pMap[p.client_id]) pMap[p.client_id] = { amount: 0, activeMonths: [], dueDay: 10 };
+            if (!pMap[p.client_id]) pMap[p.client_id] = { amount: 0, activeMonths: [], dueDay: 10, domains: [] };
             pMap[p.client_id].amount += parseFloat(p.monthly_amount);
+            if (p.dominio) pMap[p.client_id].domains.push(p.dominio.toLowerCase());
 
             // Extraer el día de la póliza como día de vencimiento mensual
             try {
@@ -259,16 +261,34 @@ export default function CollectionGrid() {
 
     const filteredClients = useMemo(() => {
         return clients.filter(c => {
+            const clientDomains = policiesMap[c.id]?.domains || [];
             const matchesSearch = c.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (c.dni || "").includes(searchTerm);
+                (c.dni || "").includes(searchTerm) ||
+                clientDomains.some(d => d.includes(searchTerm.toLowerCase()));
 
             const hasActivePolicy = !!policiesMap[c.id];
             const hasPayments = c.payments && c.payments.length > 0;
 
-            // Solo mostrar si coincide la búsqueda Y (tiene póliza activa O tiene algún pago real)
-            return matchesSearch && (hasActivePolicy || hasPayments);
+            if (!matchesSearch || (!hasActivePolicy && !hasPayments)) return false;
+
+            if (filterStatus === "all") return true;
+
+            // Lógica de filtros de estado
+            let hasOverdue = false;
+            let hasPaidCurrent = false;
+
+            for (let i = 0; i < 12; i++) {
+                const p = getPaymentStatus(c, i);
+                if (p?.status === "overdue") hasOverdue = true;
+                if (i + 1 === currentMonth && p?.status === "paid") hasPaidCurrent = true;
+            }
+
+            if (filterStatus === "overdue") return hasOverdue;
+            if (filterStatus === "paid") return hasPaidCurrent;
+
+            return true;
         });
-    }, [clients, searchTerm, policiesMap]);
+    }, [clients, searchTerm, policiesMap, filterStatus, currentMonth]);
 
     // Count stats memoized (Evita O(N*12) en cada render)
     const totalOverdue = useMemo(() => {
@@ -296,19 +316,50 @@ export default function CollectionGrid() {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col h-full">
                 {/* Header */}
                 <div className="p-4 border-b bg-slate-50/50 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                    <div className="flex flex-col sm:flex-row items-center gap-4 flex-1">
-                        <div className="relative w-full sm:max-w-md">
+                    <div className="flex flex-col lg:flex-row items-center gap-4 flex-1">
+                        <div className="relative w-full lg:max-w-xs xl:max-w-md">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                             <input
                                 type="text"
-                                placeholder="Buscar por nombre o DNI..."
+                                placeholder="Buscar por nombre, DNI o Patente..."
                                 className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/10 outline-none transition-all text-sm"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        {totalOverdue > 0 && (
-                            <div className="flex items-center justify-center gap-2 bg-rose-50 text-rose-600 px-4 py-2 rounded-xl border border-rose-100 text-[10px] font-black uppercase tracking-widest w-full sm:w-auto">
+
+                        <div className="flex bg-white border rounded-xl p-1 shadow-sm w-full lg:w-auto overflow-x-auto no-scrollbar">
+                            <button
+                                onClick={() => setFilterStatus("all")}
+                                className={cn(
+                                    "flex-1 lg:flex-initial px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                                    filterStatus === "all" ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-50"
+                                )}
+                            >
+                                Todos
+                            </button>
+                            <button
+                                onClick={() => setFilterStatus("overdue")}
+                                className={cn(
+                                    "flex-1 lg:flex-initial px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                                    filterStatus === "overdue" ? "bg-rose-500 text-white shadow-lg shadow-rose-200" : "text-rose-600 hover:bg-rose-50"
+                                )}
+                            >
+                                Con Deuda
+                            </button>
+                            <button
+                                onClick={() => setFilterStatus("paid")}
+                                className={cn(
+                                    "flex-1 lg:flex-initial px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                                    filterStatus === "paid" ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200" : "text-emerald-600 hover:bg-emerald-50"
+                                )}
+                            >
+                                Al Día
+                            </button>
+                        </div>
+
+                        {totalOverdue > 0 && filterStatus !== "overdue" && (
+                            <div className="flex items-center justify-center gap-2 bg-rose-50 text-rose-600 px-4 py-2 rounded-xl border border-rose-100 text-[10px] font-black uppercase tracking-widest w-full lg:w-auto animate-pulse">
                                 <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                                 {totalOverdue} vencidos
                             </div>

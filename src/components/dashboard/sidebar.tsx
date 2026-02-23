@@ -37,29 +37,40 @@ export default function Sidebar() {
 
     const fetchProfile = async (userId: string) => {
         try {
-            // No ponemos loading(true) aquí para evitar el parpadeo si ya tenemos datos
+            // Intentar recuperar de cache primero para evitar esperas
+            const cached = localStorage.getItem(`sb_profile_${userId}`);
+            if (cached && !profile) {
+                setProfile(JSON.parse(cached));
+            }
+
             const { data, error } = await supabase
                 .from("profiles")
                 .select("*")
                 .eq("id", userId)
                 .maybeSingle();
 
-            if (error) {
-                console.error("[Sidebar] Profile error:", error);
-            } else if (data) {
+            if (data) {
                 setProfile(data);
-                // Guardar en cache local para recuperaciones instantáneas
                 localStorage.setItem(`sb_profile_${userId}`, JSON.stringify(data));
 
                 if (data.is_active === false) {
                     await supabase.auth.signOut();
-                    router.push("/login");
+                    window.location.href = "/login";
+                }
+            } else if (error) {
+                console.error("[Sidebar] Error al cargar perfil:", error);
+                // Si falla pero ya teníamos cache, no hacemos nada (mantener cache)
+                // Si no hay perfil, ponemos uno por defecto para no bloquear la UI
+                if (!profile) {
+                    setProfile({ role: 'viewer', full_name: 'Usuario' });
                 }
             } else {
-                setProfile({ role: 'viewer', full_name: 'Usuario sin Perfil' });
+                // No hay datos (usuario nuevo sin perfil)
+                setProfile({ role: 'viewer', full_name: 'Nuevo Integrante' });
             }
         } catch (err) {
-            console.error("[Sidebar] Fetch crash:", err);
+            console.error("[Sidebar] Fetch catch:", err);
+            if (!profile) setProfile({ role: 'viewer', full_name: 'Error Perfil' });
         } finally {
             setLoading(false);
         }
@@ -67,44 +78,29 @@ export default function Sidebar() {
 
     useEffect(() => {
         let isMounted = true;
-        let isSyncing = false;
 
-        const syncAuth = async () => {
-            if (isSyncing) return;
-            isSyncing = true;
-            try {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session?.user && isMounted) {
-                    setUserEmail(session.user.email || null);
-
-                    // INTENTO DE RECUPERACIÓN FLASH (CACHE)
-                    const cached = localStorage.getItem(`sb_profile_${session.user.id}`);
-                    if (cached && !profile) {
-                        setProfile(JSON.parse(cached));
-                        setLoading(false);
-                    }
-
-                    await fetchProfile(session.user.id);
-                } else if (isMounted) {
-                    setLoading(false);
-                }
-            } catch (e) {
-                console.error("[Sidebar] Auth sync error:", e);
-                if (isMounted) setLoading(false);
-            } finally {
-                isSyncing = false;
+        const checkAuth = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user && isMounted) {
+                setUserEmail(session.user.email || null);
+                await fetchProfile(session.user.id);
+            } else if (isMounted) {
+                setLoading(false);
             }
         };
 
-        syncAuth();
+        checkAuth();
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (!isMounted) return;
+
             console.log("[Sidebar] Auth Event:", event);
-            if (session?.user && isMounted) {
+            if (session?.user) {
                 setUserEmail(session.user.email || null);
-                // Only re-fetch if we don't have a profile or session changed
-                await fetchProfile(session.user.id);
-            } else if (isMounted && (event === 'SIGNED_OUT' || !session)) {
+                if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+                    await fetchProfile(session.user.id);
+                }
+            } else if (event === "SIGNED_OUT") {
                 setProfile(null);
                 setUserEmail(null);
                 setLoading(false);
@@ -115,7 +111,7 @@ export default function Sidebar() {
             isMounted = false;
             subscription.unsubscribe();
         };
-    }, [router]);
+    }, []);
 
     const handleLogout = async () => {
         try {
