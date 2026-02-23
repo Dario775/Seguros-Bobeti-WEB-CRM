@@ -177,9 +177,11 @@ export default function ReportesPage() {
                                     Distribución de Cartera
                                 </h3>
                                 <div className="space-y-6 flex-1">
-                                    {Object.entries(report.byType).map(([type, count]: [any, any]) => {
+                                    {Object.entries(report.byType).map(([type, count]: [string, any]) => {
                                         const config = TYPE_CONFIG[type] || TYPE_CONFIG.otro;
-                                        const percentage = Math.round((count / Object.values(report.byType).reduce((a: any, b: any) => a + b, 0) as number) * 100);
+                                        const values = Object.values(report.byType) as number[];
+                                        const total = values.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
                                         return (
                                             <div key={type} className="group">
                                                 <div className="flex justify-between items-center mb-2">
