@@ -1,6 +1,6 @@
 "use server";
 
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { createClient } from "@/lib/supabase-server"; // Use the server client for auth awareness
 import { revalidatePath } from "next/cache";
 import { syncPaymentToInstallment } from "@/lib/sync-logic";

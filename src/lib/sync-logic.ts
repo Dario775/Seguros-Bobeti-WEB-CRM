@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "./supabase";
+import { supabaseAdmin } from "./supabase-admin";
 
 /**
  * Sincroniza un pago registrado en la matriz con la cuota de la póliza correspondiente.

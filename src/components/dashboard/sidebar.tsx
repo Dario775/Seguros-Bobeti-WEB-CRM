@@ -169,7 +169,7 @@ export default function Sidebar() {
     return (
         <>
             {/* Desktop Sidebar */}
-            <aside className="hidden lg:flex w-72 flex-shrink-0 glass-sidebar h-screen sticky top-0 flex flex-col border-r shadow-sm z-50">
+            <aside className="hidden md:flex w-72 flex-shrink-0 glass-sidebar h-screen sticky top-0 flex flex-col border-r shadow-sm z-50">
                 <div className="p-8 pb-4">
                     <div className="flex items-center gap-3 px-2 mb-8">
                         <div className="bg-primary p-2 rounded-xl shadow-lg shadow-primary/30">
@@ -277,7 +277,7 @@ export default function Sidebar() {
             </aside>
 
             {/* Mobile Bottom Nav */}
-            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-slate-200 px-2 py-2 flex items-center justify-around z-[100] pb-safe shadow-[0_-8px_30px_rgb(0,0,0,0.04)]">
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-slate-200 px-2 py-2 flex items-center justify-around z-[100] pb-safe shadow-[0_-8px_30px_rgb(0,0,0,0.04)]">
                 {filteredItems.map((item) => {
                     const isActive = pathname === item.path;
                     const Icon = item.icon;
@@ -288,7 +288,7 @@ export default function Sidebar() {
                             key={item.path}
                             href={item.path}
                             className={cn(
-                                "flex flex-col items-center gap-1 p-2 rounded-xl transition-all relative min-w-[64px]",
+                                "flex flex-col items-center gap-1 p-2 rounded-xl transition-all relative flex-1 max-w-[80px]",
                                 isActive ? "text-primary scale-110" : "text-slate-400"
                             )}
                         >
@@ -300,7 +300,7 @@ export default function Sidebar() {
                             </div>
                             <span className="text-[9px] font-black uppercase tracking-wider">{item.label}</span>
                             {hasAlerts && (
-                                <span className="absolute top-1 right-3 flex h-2.5 w-2.5">
+                                <span className="absolute top-1 right-2 flex h-2.5 w-2.5">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
                                 </span>
