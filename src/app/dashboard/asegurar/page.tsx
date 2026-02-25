@@ -236,7 +236,7 @@ export default function AsegurarPage() {
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-black text-slate-900 text-sm truncate">{policy.client?.full_name || "Sin cliente"}</p>
                                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                                    {typeConf.label} • N° {policy.policy_number}
+                                                    {typeConf.label} • {policy.company || "La Segunda"} • N° {policy.policy_number}
                                                     {policy.dominio && <span className="ml-2 text-primary">🚗 {policy.dominio}</span>}
                                                 </p>
                                             </div>
@@ -267,11 +267,7 @@ export default function AsegurarPage() {
                                                 )}
                                             </div>
 
-                                            {/* Monthly amount */}
-                                            <div className="text-right mr-2 shrink-0">
-                                                <p className="text-sm font-black text-slate-900">${parseFloat(policy.monthly_amount).toLocaleString("es-AR")}</p>
-                                                <p className="text-[10px] font-bold text-slate-400">/mes</p>
-                                            </div>
+
 
                                             {/* Status badge */}
                                             <div className={cn("px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0", statusConf.bg, statusConf.color)}>

@@ -28,9 +28,11 @@ export default function CollectionGrid() {
     const [loading, setLoading] = useState(true);
     const [clients, setClients] = useState<any[]>([]);
     const [userProfile, setUserProfile] = useState<any>(null);
-    const [policiesMap, setPoliciesMap] = useState<Record<string, { amount: number, activeMonths: number[], domains: string[] }>>({});
-    const [filterStatus, setFilterStatus] = useState<"all" | "overdue" | "paid">("all");
+    const [policiesMap, setPoliciesMap] = useState<Record<string, { amount: number, activeMonths: number[], domains: string[], dueDay: number }>>({});
     const [messageTemplate, setMessageTemplate] = useState('');
+    const [paymentAlertDays, setPaymentAlertDays] = useState(5);
+    const [alertDaysInput, setAlertDaysInput] = useState("5");
+    const [filterStatus, setFilterStatus] = useState<"all" | "overdue" | "paid" | "expiring">("all");
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth() + 1; // 1-12
 
@@ -115,6 +117,9 @@ export default function CollectionGrid() {
             const { data: settings } = await getSystemSettings();
             if (settings) {
                 setMessageTemplate(settings.payment_message_template || '');
+                const days = settings.payment_alert_days || 5;
+                setPaymentAlertDays(days);
+                setAlertDaysInput(String(days));
             }
         };
         fetchSettings();
@@ -127,12 +132,25 @@ export default function CollectionGrid() {
         const payment = client.payments?.find((p: any) => p.month === month && p.year === currentYear);
         if (payment) return payment;
 
-        // Solo marcar como "vencido" si hay una póliza activa en ese mes
+        // Solo marcar como "vencido" o "por vencer" si hay una póliza activa en ese mes
         const policyInfo = policiesMap[client.id];
         const isCovered = policyInfo?.activeMonths.includes(month);
 
-        if (month < currentMonth && isCovered) {
-            return { status: "overdue", amount: 0, virtual: true };
+        if (isCovered) {
+            const today = new Date();
+            const todayTime = today.getTime();
+            const dueDay = policyInfo?.dueDay || 10;
+            const dueDate = new Date(currentYear, monthIndex, dueDay);
+            const diffTime = dueDate.getTime() - todayTime;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (month < currentMonth || (month === currentMonth && diffDays < 0)) {
+                return { status: "overdue", amount: 0, virtual: true };
+            }
+
+            if (diffDays <= paymentAlertDays && diffDays >= 0) {
+                return { status: "expiring", amount: 0, virtual: true };
+            }
         }
         return null;
     };
@@ -142,6 +160,7 @@ export default function CollectionGrid() {
             case "paid": return "bg-emerald-100 text-emerald-700 border-emerald-300 hover:bg-emerald-200";
             case "pending": return "bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-200";
             case "overdue": return "bg-rose-100 text-rose-700 border-rose-300 hover:bg-rose-200";
+            case "expiring": return "bg-orange-100 text-orange-700 border-orange-300 hover:bg-orange-200"; // Agregado color por vencer
             case "not_applicable": return "bg-slate-100 text-slate-400 border-slate-200";
             default: return "bg-slate-50 text-slate-300 border-slate-100 hover:bg-slate-100 hover:border-slate-200";
         }
@@ -152,6 +171,7 @@ export default function CollectionGrid() {
             case "paid": return <CheckCircle className="w-3 h-3" />;
             case "pending": return <Clock className="w-3 h-3" />;
             case "overdue": return <AlertTriangle className="w-3 h-3" />;
+            case "expiring": return <Clock className="w-3 h-3 text-orange-600" />;
             default: return null;
         }
     };
@@ -191,8 +211,9 @@ export default function CollectionGrid() {
 
         message = message
             .replace(/{ ?nombre ?}|\[ ?nombre ?\]/gi, client.full_name)
-            .replace(/{ ?monto ?}|\[ ?monto ?\]/gi, `$${amountFormatted}`)
-            .replace(/{ ?fecha ?}|\[ ?fecha ?\]/gi, date);
+            .replace(/{ ?monto ?}|\[ ?monto ?\]/gi, "")
+            .replace(/{ ?fecha ?}|\[ ?fecha ?\]/gi, date)
+            .replace(/ de vence /gi, " vence ");
 
         const url = `https://wa.me/${(client.phone || "").replace("+", "").replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
         window.open(url, "_blank");
@@ -205,41 +226,29 @@ export default function CollectionGrid() {
             [`REPORTE DE COBRANZAS - MATRIZ ANUAL ${currentYear}`],
             [`EMITIDO EL: ${new Date().toLocaleDateString("es-AR")} ${new Date().toLocaleTimeString("es-AR")}`],
             [""],
-            ["DNI", "Asegurado", "Premio Mensual", ...months, "Total Pagado"]
+            ["DNI", "Asegurado", ...months]
         ];
 
-        let totalGeneral = 0;
-
         const rows = filteredClients.map(client => {
-            const policyAmount = policiesMap[client.id]?.amount || 0;
-            let totalAsegurado = 0;
-
             const monthData = months.map((_, i) => {
                 const p = getPaymentStatus(client, i);
                 if (p?.status === "paid") {
-                    const amt = parseFloat(p.amount || policyAmount);
-                    totalAsegurado += amt;
-                    return p.amount > 0 ? `$${Math.round(p.amount)}` : `$${Math.round(policyAmount)}`;
+                    return "PAGADO";
                 }
                 if (p?.status === "overdue") return "VENCIDO";
                 if (p?.status === "pending") return "PENDIENTE";
                 return "-";
             });
 
-            totalGeneral += totalAsegurado;
-
             return [
                 client.dni,
                 client.full_name.toUpperCase(),
-                `$${Math.round(policyAmount)}`,
-                ...monthData,
-                `$${Math.round(totalAsegurado)}`
+                ...monthData
             ];
         });
 
         const footerLines = [
-            [""],
-            ["", "RESUMEN TOTAL ACUMULADO", "", ...months.map(() => ""), `$${Math.round(totalGeneral)}`]
+            [""]
         ];
 
         const csvContent = [
@@ -276,19 +285,25 @@ export default function CollectionGrid() {
             // Lógica de filtros de estado
             let hasOverdue = false;
             let hasPaidCurrent = false;
+            let hasExpiring = false;
+
+            const today = new Date();
+            const todayTime = today.getTime();
 
             for (let i = 0; i < 12; i++) {
                 const p = getPaymentStatus(c, i);
                 if (p?.status === "overdue") hasOverdue = true;
                 if (i + 1 === currentMonth && p?.status === "paid") hasPaidCurrent = true;
+                if (p?.status === "expiring") hasExpiring = true;
             }
 
             if (filterStatus === "overdue") return hasOverdue;
             if (filterStatus === "paid") return hasPaidCurrent;
+            if (filterStatus === "expiring") return hasExpiring;
 
             return true;
         });
-    }, [clients, searchTerm, policiesMap, filterStatus, currentMonth]);
+    }, [clients, searchTerm, policiesMap, filterStatus, currentMonth, paymentAlertDays, currentYear]);
 
     // Count stats memoized (Evita O(N*12) en cada render)
     const totalOverdue = useMemo(() => {
@@ -348,6 +363,46 @@ export default function CollectionGrid() {
                                 Con Deuda
                             </button>
                             <button
+                                onClick={() => setFilterStatus("expiring")}
+                                className={cn(
+                                    "flex-1 lg:flex-initial flex items-center justify-center px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                                    filterStatus === "expiring" ? "bg-orange-500 text-white shadow-lg shadow-orange-200" : "text-orange-600 hover:bg-orange-50"
+                                )}
+                            >
+                                Por Vencer
+                                {filterStatus === "expiring" && (
+                                    <span className="flex items-center ml-2 border-l border-orange-400 pl-2">
+                                        a
+                                        <input
+                                            type="text"
+                                            value={alertDaysInput}
+                                            onChange={(e) => setAlertDaysInput(e.target.value.replace(/\D/g, ''))}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    const val = parseInt(alertDaysInput, 10);
+                                                    if (!isNaN(val) && val >= 0) {
+                                                        setPaymentAlertDays(val);
+                                                    } else {
+                                                        setAlertDaysInput(String(paymentAlertDays));
+                                                    }
+                                                }
+                                            }}
+                                            onBlur={() => {
+                                                const val = parseInt(alertDaysInput, 10);
+                                                if (!isNaN(val) && val >= 0) {
+                                                    setPaymentAlertDays(val);
+                                                } else {
+                                                    setAlertDaysInput(String(paymentAlertDays));
+                                                }
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="w-8 ml-1 bg-transparent border-b border-orange-300 text-center text-[10px] font-bold outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                        días
+                                    </span>
+                                )}
+                            </button>
+                            <button
                                 onClick={() => setFilterStatus("paid")}
                                 className={cn(
                                     "flex-1 lg:flex-initial px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
@@ -401,7 +456,6 @@ export default function CollectionGrid() {
                             <tr className="bg-slate-100/80 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest border-b">
                                 <th className="px-3 py-4 text-left sticky left-0 z-30 bg-slate-100 border-r min-w-[70px]">DNI</th>
                                 <th className="px-4 py-4 text-left sticky left-[70px] z-30 bg-slate-100 border-r min-w-[200px]">Asegurado</th>
-                                <th className="px-2 py-4 text-center border-r min-w-[100px] bg-slate-200/50 text-slate-700">PREMIO / MES</th>
                                 {months.map((m, i) => (
                                     <th key={m} className={cn(
                                         "px-2 py-4 text-center border-r min-w-[85px]",
@@ -422,14 +476,6 @@ export default function CollectionGrid() {
                                     <td className="px-4 py-3 whitespace-nowrap sticky left-[70px] z-20 bg-white border-r font-bold text-slate-900 text-xs text-left group-hover:bg-slate-50/50 uppercase">
                                         {client.full_name}
                                     </td>
-                                    <td className="px-2 py-3 text-center border-r text-xs font-black text-slate-700 bg-slate-50/80">
-                                        {policiesMap[client.id]?.amount ? (
-                                            <div className="flex flex-col">
-                                                <span>${Math.round(policiesMap[client.id].amount).toLocaleString("es-AR")}</span>
-                                                <span className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">FIJO</span>
-                                            </div>
-                                        ) : <span className="text-slate-300">—</span>}
-                                    </td>
                                     {Array.from({ length: 12 }).map((_, i) => {
                                         const payment = getPaymentStatus(client, i);
                                         const isFuture = i + 1 > currentMonth;
@@ -449,7 +495,7 @@ export default function CollectionGrid() {
                                                         <>
                                                             {getStatusIcon(payment.status)}
                                                             <span>
-                                                                {payment.amount > 0 ? `$${Math.round(payment.amount)}` : payment.status === "overdue" ? "!" : "---"}
+                                                                {payment.status === "paid" ? "OK" : payment.status === "overdue" ? "!" : "---"}
                                                             </span>
                                                         </>
                                                     ) : (
@@ -479,6 +525,7 @@ export default function CollectionGrid() {
                     <div className="flex items-center gap-4 flex-wrap justify-center">
                         <span className="flex items-center gap-1.5"><div className="w-3.5 h-3.5 rounded bg-emerald-100 border border-emerald-300" /> COBRADO</span>
                         <span className="flex items-center gap-1.5"><div className="w-3.5 h-3.5 rounded bg-amber-100 border border-amber-300" /> PENDIENTE</span>
+                        <span className="flex items-center gap-1.5"><div className="w-3.5 h-3.5 rounded bg-orange-100 border border-orange-300" /> POR VENCER</span>
                         <span className="flex items-center gap-1.5"><div className="w-3.5 h-3.5 rounded bg-rose-100 border border-rose-300" /> VENCIDO</span>
                         <span className="flex items-center gap-1.5"><div className="w-3.5 h-3.5 rounded bg-slate-100 border border-slate-300" /> SIN REGISTRO</span>
                     </div>

@@ -39,8 +39,12 @@ export default function Sidebar() {
         try {
             // Intentar recuperar de cache primero para evitar esperas
             const cached = localStorage.getItem(`sb_profile_${userId}`);
-            if (cached && !profile) {
-                setProfile(JSON.parse(cached));
+            if (cached) {
+                const parsedCache = JSON.parse(cached);
+                if (parsedCache.full_name !== "Cargando..." && !profile) {
+                    setProfile(parsedCache);
+                    setLoading(false); // Inmediatamente mostrar el menú si hay caché validado
+                }
             }
 
             const { data, error } = await supabase
@@ -62,15 +66,15 @@ export default function Sidebar() {
                 // Si falla pero ya teníamos cache, no hacemos nada (mantener cache)
                 // Si no hay perfil, ponemos uno por defecto para no bloquear la UI
                 if (!profile) {
-                    setProfile({ role: 'viewer', full_name: 'Usuario' });
+                    setProfile({ role: 'viewer', full_name: 'Usuario', permissions: { dashboard: true, clientes: true, asegurar: true, cobranzas: true } });
                 }
             } else {
                 // No hay datos (usuario nuevo sin perfil)
-                setProfile({ role: 'viewer', full_name: 'Nuevo Integrante' });
+                setProfile({ role: 'viewer', full_name: 'Nuevo Integrante', permissions: { dashboard: true, clientes: true, asegurar: true, cobranzas: true } });
             }
         } catch (err) {
             console.error("[Sidebar] Fetch catch:", err);
-            if (!profile) setProfile({ role: 'viewer', full_name: 'Error Perfil' });
+            if (!profile) setProfile({ role: 'viewer', full_name: 'Error Perfil', permissions: { dashboard: true, clientes: true, asegurar: true, cobranzas: true } });
         } finally {
             setLoading(false);
         }
@@ -80,12 +84,19 @@ export default function Sidebar() {
         let isMounted = true;
 
         const checkAuth = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user && isMounted) {
-                setUserEmail(session.user.email || null);
-                await fetchProfile(session.user.id);
-            } else if (isMounted) {
-                setLoading(false);
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                if (error) throw error;
+
+                if (session?.user && isMounted) {
+                    setUserEmail(session.user.email || null);
+                    await fetchProfile(session.user.id);
+                } else if (isMounted) {
+                    setLoading(false);
+                }
+            } catch (err) {
+                console.error("[Sidebar] checkAuth error:", err);
+                if (isMounted) setLoading(false);
             }
         };
 
@@ -239,11 +250,11 @@ export default function Sidebar() {
                         </button>
                         <div className="flex items-center gap-3 min-w-0">
                             <div className="flex-shrink-0 w-10 h-10 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-sm font-black text-primary uppercase">
-                                {profile?.full_name?.charAt(0) || <UserCog className="w-5 h-5" />}
+                                {profile?.full_name?.charAt(0) || (!loading && userEmail ? userEmail.charAt(0) : <UserCog className="w-5 h-5" />)}
                             </div>
                             <div className="min-w-0 flex-1">
                                 <p className="text-[11px] font-black text-slate-900 leading-none mb-1 truncate">
-                                    {profile?.full_name || "Cargando..."}
+                                    {loading ? "Cargando..." : (profile?.full_name || userEmail?.split('@')[0] || "Usuario")}
                                 </p>
                                 <p className="text-[9px] text-slate-500 truncate lowercase mb-1 opacity-70">
                                     {userEmail || "anonimo"}

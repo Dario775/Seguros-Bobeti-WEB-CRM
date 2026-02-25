@@ -15,9 +15,11 @@ import {
     Loader2,
     Bell,
     CreditCard,
-    CalendarClock,
     MessageSquare,
-    ShieldCheck
+    ShieldCheck,
+    Building2,
+    Plus,
+    X
 } from "lucide-react";
 import Sidebar from "@/components/dashboard/sidebar";
 import { useState, useEffect, useCallback } from "react";
@@ -42,13 +44,15 @@ export default function ConfigPage() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [editUser, setEditUser] = useState<any>(null);
+    const [newCompany, setNewCompany] = useState("");
 
     // Settings state
     const [settings, setSettings] = useState({
         payment_alert_days: 5,
         policy_alert_days: 15,
         payment_message_template: '',
-        policy_message_template: ''
+        policy_message_template: '',
+        companies: [] as string[]
     });
     const [savingSettings, setSavingSettings] = useState(false);
 
@@ -79,7 +83,8 @@ export default function ConfigPage() {
                 payment_alert_days: result.data.payment_alert_days,
                 policy_alert_days: result.data.policy_alert_days,
                 payment_message_template: result.data.payment_message_template || '',
-                policy_message_template: result.data.policy_message_template || ''
+                policy_message_template: result.data.policy_message_template || '',
+                companies: result.data.companies || ["La Segunda"]
             });
         }
     }, []);
@@ -148,7 +153,7 @@ export default function ConfigPage() {
 
                 {/* Configuration Tabs */}
                 <div className="flex gap-4 mb-8 bg-white/50 p-2 rounded-[24px] border border-slate-100 self-start inline-flex">
-                    {["usuarios", "alertas", "roles", "seguridad"].map((tab) => (
+                    {["usuarios", "aseguradoras", "alertas"].map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
@@ -159,7 +164,7 @@ export default function ConfigPage() {
                                     : "text-slate-400 hover:text-slate-600 hover:bg-white/50"
                             )}
                         >
-                            {tab === "usuarios" ? "Staff Autorizado" : tab === "alertas" ? "Alertas y Notif." : tab}
+                            {tab === "usuarios" ? "Staff Autorizado" : tab === "aseguradoras" ? "Compañías" : tab === "alertas" ? "Alertas y Notif." : tab}
                         </button>
                     ))}
                 </div>
@@ -257,6 +262,80 @@ export default function ConfigPage() {
                                             )}
                                         </tbody>
                                     </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === "aseguradoras" && (
+                            <div className="bg-white rounded-[40px] shadow-sm border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="px-10 py-8 border-b bg-slate-50/20">
+                                    <h3 className="font-black text-slate-900 flex items-center gap-3 text-sm uppercase tracking-widest">
+                                        <Building2 className="w-5 h-5 text-primary" />
+                                        Compañías Aseguradoras
+                                    </h3>
+                                    <p className="text-[11px] text-slate-400 font-bold mt-1 uppercase tracking-tight">Administra la lista de compañías aseguradoras disponibles para cargar pólizas</p>
+                                </div>
+
+                                <div className="p-10 space-y-10">
+                                    <div className="max-w-2xl mx-auto w-full space-y-6">
+                                        <div className="flex gap-3">
+                                            <input
+                                                type="text"
+                                                value={newCompany}
+                                                onChange={(e) => setNewCompany(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === "Enter" && newCompany.trim()) {
+                                                        e.preventDefault();
+                                                        if (!settings.companies.includes(newCompany.trim())) {
+                                                            setSettings({ ...settings, companies: [...settings.companies, newCompany.trim()] });
+                                                        }
+                                                        setNewCompany("");
+                                                    }
+                                                }}
+                                                placeholder="Nombre de la nueva compañía... (Ej: RUS)"
+                                                className="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all uppercase text-sm"
+                                            />
+                                            <button
+                                                onClick={() => {
+                                                    if (newCompany.trim() && !settings.companies.includes(newCompany.trim())) {
+                                                        setSettings({ ...settings, companies: [...settings.companies, newCompany.trim()] });
+                                                        setNewCompany("");
+                                                    }
+                                                }}
+                                                className="px-6 py-3 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-md hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+                                            >
+                                                <Plus className="w-4 h-4" /> Agregar
+                                            </button>
+                                        </div>
+
+                                        <div className="bg-slate-50 border border-slate-100 rounded-[24px] p-6 flex flex-wrap gap-3">
+                                            {settings.companies.map((company) => (
+                                                <div key={company} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg shadow-sm group">
+                                                    <span className="font-black text-slate-700 text-xs uppercase tracking-wider">{company}</span>
+                                                    <button
+                                                        onClick={() => setSettings({ ...settings, companies: settings.companies.filter(c => c !== company) })}
+                                                        className="text-slate-300 hover:text-rose-500 transition-colors p-1"
+                                                    >
+                                                        <X className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {settings.companies.length === 0 && (
+                                                <p className="text-slate-400 font-bold italic text-xs p-4 text-center w-full">No hay compañías definidas. Agrega una arriba.</p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-6 border-t border-slate-100 flex justify-end">
+                                        <button
+                                            onClick={handleSaveSettings}
+                                            disabled={savingSettings}
+                                            className="flex items-center gap-3 px-10 py-4 bg-primary text-white rounded-[22px] font-black shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest text-xs disabled:opacity-50 disabled:scale-100"
+                                        >
+                                            {savingSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                                            Guardar Configuración
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         )}

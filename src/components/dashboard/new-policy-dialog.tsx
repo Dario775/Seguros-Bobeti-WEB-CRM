@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, ShieldPlus, Loader2, Search, UserPlus, Car, Calendar, DollarSign, FileText, Layers, Check } from "lucide-react";
+import { X, ShieldPlus, Loader2, Search, UserPlus, Car, Calendar, DollarSign, FileText, Layers, Check, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { createPolicyAction } from "@/app/actions/policies";
 import { createClientAction } from "@/app/actions/clients";
@@ -33,6 +33,7 @@ export default function NewPolicyDialog({ isOpen, onClose }: NewPolicyDialogProp
 
     const [formData, setFormData] = useState({
         type: "auto",
+        company: "",
         dominio: "",
         start_date: new Date().toISOString().split("T")[0],
         monthly_amount: "",
@@ -41,6 +42,7 @@ export default function NewPolicyDialog({ isOpen, onClose }: NewPolicyDialogProp
     });
 
     const [userProfile, setUserProfile] = useState<any>(null);
+    const [companies, setCompanies] = useState<string[]>([]);
 
     useEffect(() => {
         if (isOpen) {
@@ -55,13 +57,20 @@ export default function NewPolicyDialog({ isOpen, onClose }: NewPolicyDialogProp
                 }
             });
 
+            supabase.from("system_settings").select("companies").eq("id", "global").single()
+                .then(({ data }) => {
+                    const loaded = data?.companies || ["La Segunda", "RUS", "San Cristobal", "Sancor"];
+                    setCompanies(loaded);
+                    setFormData(prev => ({ ...prev, company: loaded[0] || "" }));
+                });
+
             // Reset
             setSelectedClient(null);
             setClientSearch("");
             setShowNewClientForm(false);
             setNewClient({ full_name: "", dni: "", phone: "+54" });
             setFormData({
-                type: "auto", dominio: "",
+                type: "auto", company: companies[0] || "La Segunda", dominio: "",
                 start_date: new Date().toISOString().split("T")[0],
                 monthly_amount: "", installments: 12, notes: "",
             });
@@ -127,8 +136,7 @@ export default function NewPolicyDialog({ isOpen, onClose }: NewPolicyDialogProp
         }
     };
 
-    const totalAmount = formData.monthly_amount && formData.installments
-        ? (parseFloat(formData.monthly_amount) * formData.installments).toFixed(2) : "0.00";
+
 
     const endDatePreview = (() => {
         if (!formData.start_date || !formData.installments) return "";
@@ -140,7 +148,6 @@ export default function NewPolicyDialog({ isOpen, onClose }: NewPolicyDialogProp
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedClient) { toast.error("Seleccioná o creá un asegurado"); return; }
-        if (!formData.monthly_amount) { toast.error("Ingresá el monto de la cuota"); return; }
 
         setIsSubmitting(true);
         try {
@@ -152,7 +159,7 @@ export default function NewPolicyDialog({ isOpen, onClose }: NewPolicyDialogProp
                 client_id: selectedClient.id,
                 policy_number,
                 ...formData,
-                monthly_amount: parseFloat(formData.monthly_amount),
+                monthly_amount: 0,
             });
 
             if (result.success) {
@@ -302,6 +309,19 @@ export default function NewPolicyDialog({ isOpen, onClose }: NewPolicyDialogProp
 
                         <div className="space-y-2">
                             <label className="text-xs font-black text-slate-500 uppercase flex items-center gap-2">
+                                <Building2 className="w-3.5 h-3.5" /> Compañía
+                            </label>
+                            <select
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-bold text-slate-900 appearance-none shadow-inner"
+                                value={formData.company}
+                                onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                            >
+                                {companies.map((c) => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-black text-slate-500 uppercase flex items-center gap-2">
                                 <Car className="w-3.5 h-3.5" /> Dominio (Patente)
                             </label>
                             <input
@@ -324,18 +344,6 @@ export default function NewPolicyDialog({ isOpen, onClose }: NewPolicyDialogProp
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-500 uppercase flex items-center gap-2">
-                                <DollarSign className="w-3.5 h-3.5" /> Cuota Mensual ($)
-                            </label>
-                            <input
-                                required type="number" step="0.01" min="0" placeholder="Ej: 15000"
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-bold text-slate-900 shadow-inner"
-                                value={formData.monthly_amount}
-                                onChange={(e) => setFormData({ ...formData, monthly_amount: e.target.value })}
-                            />
-                        </div>
-
                         <div className="space-y-2 md:col-span-2">
                             <label className="text-xs font-black text-slate-500 uppercase flex items-center gap-2">
                                 <Layers className="w-3.5 h-3.5" /> Cantidad de Cuotas
@@ -350,16 +358,10 @@ export default function NewPolicyDialog({ isOpen, onClose }: NewPolicyDialogProp
                     </div>
 
                     {/* Preview card */}
-                    {formData.monthly_amount && (
-                        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 grid grid-cols-2 gap-4 text-center">
-                            <div>
-                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-wider mb-1">Cuota Mensual</p>
-                                <p className="text-xl font-black text-emerald-800">${parseFloat(formData.monthly_amount).toLocaleString("es-AR")}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-wider mb-1">Vence</p>
-                                <p className="text-xl font-black text-emerald-800">{endDatePreview}</p>
-                            </div>
+                    {formData.installments > 0 && (
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center">
+                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-wider mb-1">Fin de Vigencia Estimado</p>
+                            <p className="text-xl font-black text-emerald-800">{endDatePreview}</p>
                         </div>
                     )}
 

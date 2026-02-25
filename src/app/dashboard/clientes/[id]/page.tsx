@@ -82,7 +82,6 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
     }
 
     const activePolicies = client.policies?.filter((p: any) => p.status === "vigente" || p.status === "por_vencer") || [];
-    const totalMonthly = activePolicies.reduce((acc: number, p: any) => acc + parseFloat(p.monthly_amount), 0);
 
     return (
         <div className="flex min-h-screen bg-slate-50/50">
@@ -115,13 +114,9 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                             <h3 className="font-black text-slate-900 text-lg mb-1 uppercase">{client.full_name}</h3>
                             <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-6">Asegurado Premium</p>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 text-center">Total/Mes</p>
-                                    <p className="text-xl font-black text-slate-900">${Math.round(totalMonthly).toLocaleString("es-AR")}</p>
-                                </div>
-                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 text-center">Pólizas</p>
+                            <div className="grid grid-cols-1 gap-4">
+                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 text-center">Pólizas Activas</p>
                                     <p className="text-xl font-black text-slate-900">{activePolicies.length}</p>
                                 </div>
                             </div>
@@ -146,7 +141,6 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                                                 <p className="text-[10px] font-bold text-slate-400">{p.status === 'paid' ? 'COBRADO' : 'PENDIENTE'}</p>
                                             </div>
                                         </div>
-                                        <p className="text-sm font-black text-slate-900">${Math.round(p.amount)}</p>
                                     </div>
                                 ))}
                                 {(!client.payments || client.payments.length === 0) && (
@@ -190,17 +184,13 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                                         </div>
                                         <h4 className="text-lg font-black text-slate-900 mb-1">N° {p.policy_number}</h4>
                                         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
-                                            {typeConf.label} {p.dominio && `•🚗 ${p.dominio}`}
+                                            {typeConf.label} • {p.company || "La Segunda"} {p.dominio && `• 🚗 ${p.dominio}`}
                                         </p>
 
                                         <div className="space-y-3 pt-4 border-t border-slate-50">
                                             <div className="flex justify-between text-[11px] font-bold">
                                                 <span className="text-slate-400">VENCE</span>
                                                 <span className="text-slate-900">{formatDate(p.end_date)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-[11px] font-bold">
-                                                <span className="text-slate-400">IMPORTE MENSUAL</span>
-                                                <span className="text-primary">${parseFloat(p.monthly_amount).toLocaleString("es-AR")}</span>
                                             </div>
                                         </div>
                                     </div>

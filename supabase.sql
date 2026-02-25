@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS public.system_settings (
     policy_alert_days INTEGER DEFAULT 15,
     payment_message_template TEXT DEFAULT 'Hola {nombre}! Te recordamos que el pago de tu cuota de {monto} vence el día {fecha}. Agencia La Segunda.',
     policy_message_template TEXT DEFAULT 'Hola {nombre}! Te recordamos que tu póliza N° {nro_poliza} de La Segunda Seguros está próxima a vencer el día {fecha}. ¿Deseas renovarla?',
+    companies JSONB DEFAULT '["La Segunda", "RUS", "San Cristobal", "Sancor"]'::jsonb,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -75,6 +76,7 @@ CREATE TABLE public.policies (
   client_id UUID REFERENCES public.clients(id) ON DELETE CASCADE,
   policy_number TEXT UNIQUE NOT NULL,
   type TEXT NOT NULL CHECK (type IN ('auto', 'hogar', 'vida', 'comercio', 'otro')),
+  company TEXT DEFAULT 'La Segunda',
   dominio TEXT,
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
@@ -303,3 +305,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 DELETE FROM public.payments 
 WHERE client_id IN (SELECT id FROM public.clients WHERE full_name = 'DARIO OVEJERO')
 AND status != 'paid';
+
+-- =================================================================================
+-- SI ESTÁS ACTUALIZANDO UNA BASE DATOS EXISTENTE, EJECUTA SOLO ESTO EN SQL EDITOR:
+-- =================================================================================
+-- ALTER TABLE public.system_settings ADD COLUMN companies JSONB DEFAULT '["La Segunda", "RUS", "San Cristobal", "Sancor"]'::jsonb;
+-- ALTER TABLE public.policies ADD COLUMN company TEXT DEFAULT 'La Segunda';

@@ -22,7 +22,8 @@ export async function getSystemSettings() {
                     payment_alert_days: 5,
                     policy_alert_days: 15,
                     payment_message_template: 'Hola {nombre}! Te recordamos que el pago de tu cuota de {monto} vence el día {fecha}. Agencia La Segunda.',
-                    policy_message_template: 'Hola {nombre}! Te recordamos que tu póliza N° {nro_poliza} de La Segunda Seguros está próxima a vencer el día {fecha}. ¿Deseas renovarla?'
+                    policy_message_template: 'Hola {nombre}! Te recordamos que tu póliza N° {nro_poliza} de La Segunda Seguros está próxima a vencer el día {fecha}. ¿Deseas renovarla?',
+                    companies: ["La Segunda", "RUS", "San Cristobal", "Sancor"]
                 }
             };
         }
@@ -38,6 +39,7 @@ export async function updateSystemSettings(data: {
     policy_alert_days: number;
     payment_message_template?: string;
     policy_message_template?: string;
+    companies?: string[];
 }) {
     try {
         const supabase = await createClient();

@@ -123,7 +123,6 @@ export default function ClientesPage() {
         const nextInstallment = sortedPending[0];
 
         let dateStr = "próximo vencimiento";
-        let amountStr = "su cuota";
 
         if (nextInstallment) {
             const dateObj = new Date(nextInstallment.due_date + "T00:00:00");
@@ -131,20 +130,19 @@ export default function ClientesPage() {
             const month = dateObj.toLocaleDateString("es-AR", { month: "long" }).toUpperCase();
             const year = dateObj.getFullYear();
             dateStr = `${day} de ${month} ${year}`;
-            amountStr = `$${Math.round(nextInstallment.amount).toLocaleString("es-AR")}`;
         } else if (client.policies?.[0]) {
             // Fallback si no hay cuotas pero hay póliza
             const p = client.policies[0];
             const day = new Date(p.start_date + "T00:00:00").getDate();
             const monthName = new Date().toLocaleDateString("es-AR", { month: "long" }).toUpperCase();
             dateStr = `${day} de ${monthName} ${currentYear}`;
-            amountStr = `$${Math.round(p.monthly_amount).toLocaleString("es-AR")}`;
         }
 
         message = message
             .replace(/{ ?nombre ?}|\[ ?nombre ?\]/gi, client.full_name)
-            .replace(/{ ?monto ?}|\[ ?monto ?\]/gi, amountStr)
-            .replace(/{ ?fecha ?}|\[ ?fecha ?\]/gi, dateStr);
+            .replace(/{ ?monto ?}|\[ ?monto ?\]/gi, "")
+            .replace(/{ ?fecha ?}|\[ ?fecha ?\]/gi, dateStr)
+            .replace(/ de vence /gi, " vence ");
 
         const phone = (client.phone || "").replace(/[+\s]/g, "").replace(/\D/g, "");
         if (!phone) { toast.error("Este cliente no tiene teléfono registrado"); return; }

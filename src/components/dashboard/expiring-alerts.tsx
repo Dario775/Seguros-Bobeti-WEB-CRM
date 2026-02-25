@@ -109,7 +109,7 @@ export default function ExpiringAlerts() {
                                                 </Link>
                                             </div>
                                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                                {policy.type} • N° {policy.policy_number}
+                                                {policy.type} • {policy.company || "La Segunda"} • N° {policy.policy_number}
                                             </p>
                                         </div>
                                         <div className={cn(

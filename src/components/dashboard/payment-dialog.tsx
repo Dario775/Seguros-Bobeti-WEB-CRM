@@ -50,7 +50,7 @@ export default function PaymentDialog({
             client_id: clientId,
             year,
             month,
-            amount: parseFloat(amount) || 0,
+            amount: 0,
             status: status as any,
         });
 
@@ -82,30 +82,7 @@ export default function PaymentDialog({
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                    {/* Amount */}
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                            Monto ($) {hasPolicy && <span className="text-emerald-500 normal-case">• Desde póliza</span>}
-                        </label>
-                        <div className="relative">
-                            <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                            <input
-                                type="number"
-                                step="0.01"
-                                required
-                                readOnly={hasPolicy}
-                                placeholder="Ej: 5300"
-                                className={cn(
-                                    "w-full pl-12 pr-4 py-4 border border-slate-200 rounded-2xl outline-none transition-all font-black text-slate-900 text-lg shadow-inner",
-                                    hasPolicy
-                                        ? "bg-emerald-50/50 border-emerald-200 cursor-not-allowed"
-                                        : "bg-slate-50 focus:ring-4 focus:ring-primary/10 focus:border-primary"
-                                )}
-                                value={amount}
-                                onChange={(e) => !hasPolicy && setAmount(e.target.value)}
-                            />
-                        </div>
-                    </div>
+
 
                     {/* Status Selector */}
                     <div className="space-y-3">
