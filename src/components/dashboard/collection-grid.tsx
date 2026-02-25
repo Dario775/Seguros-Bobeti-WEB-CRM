@@ -207,13 +207,11 @@ export default function CollectionGrid() {
         const dueDay = (policiesMap[client.id] as any)?.dueDay || 10;
         const date = `${dueDay} de ${month} ${currentYear}`;
 
-        let message = messageTemplate || `Hola {nombre}! Te recordamos que el pago de tu cuota de {monto} vence el día {fecha}. Agencia La Segunda.`;
+        let message = messageTemplate || `Hola {nombre}! Te recordamos que el pago de tu cuota vence el día {fecha}. Agencia La Segunda.`;
 
         message = message
             .replace(/{ ?nombre ?}|\[ ?nombre ?\]/gi, client.full_name)
-            .replace(/{ ?monto ?}|\[ ?monto ?\]/gi, "")
-            .replace(/{ ?fecha ?}|\[ ?fecha ?\]/gi, date)
-            .replace(/ de vence /gi, " vence ");
+            .replace(/{ ?fecha ?}|\[ ?fecha ?\]/gi, date);
 
         const url = `https://wa.me/${(client.phone || "").replace("+", "").replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
         window.open(url, "_blank");

@@ -65,11 +65,10 @@ export default function UpcomingPaymentsAlerts() {
 
         const amountFormatted = formatAmount(amount);
 
-        let message = messageTemplate || `Hola {nombre}! Te recordamos que el pago de tu cuota de {monto} vence el día {fecha}. Agencia La Segunda.`;
+        let message = messageTemplate || `Hola {nombre}! Te recordamos que el pago de tu cuota vence el día {fecha}. Agencia La Segunda.`;
 
         message = message
             .replace(/{ ?nombre ?}|\[ ?nombre ?\]/gi, clientName)
-            .replace(/{ ?monto ?}|\[ ?monto ?\]/gi, amountFormatted)
             .replace(/{ ?fecha ?}|\[ ?fecha ?\]/gi, dateFormatted);
 
         window.open(`https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`, "_blank");

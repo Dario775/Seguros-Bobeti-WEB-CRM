@@ -377,9 +377,9 @@ export default function ConfigPage() {
                                                 value={settings.payment_message_template}
                                                 onChange={(e) => setSettings({ ...settings, payment_message_template: e.target.value })}
                                                 className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-xs font-medium outline-none focus:ring-4 focus:ring-primary/10 min-h-[100px] resize-none"
-                                                placeholder="Ej: Hola {nombre}! Vence tu cuota de {monto} el día {fecha}."
+                                                placeholder="Ej: Hola {nombre}! Vence tu cuota el día {fecha}."
                                             />
-                                            <p className="text-[9px] text-slate-400 mt-2 font-bold italic">Variables: {'{nombre}, {monto}, {fecha}'}</p>
+                                            <p className="text-[9px] text-slate-400 mt-2 font-bold italic">Variables: {'{nombre}, {fecha}'}</p>
                                         </div>
                                     </div>
 
