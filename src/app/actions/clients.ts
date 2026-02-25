@@ -24,7 +24,7 @@ export async function createClientAction(data: any) {
 
         const { full_name, dni, phone } = data;
 
-        const { data: newClient, error } = await supabase
+        const { data: newClient, error } = await supabaseAdmin
             .from("clients")
             .insert([{ full_name, dni, phone }])
             .select()
@@ -66,7 +66,7 @@ export async function updateClientAction(id: string, data: any) {
 
         const { full_name, dni, phone } = data;
 
-        const { error } = await supabase
+        const { error } = await supabaseAdmin
             .from("clients")
             .update({ full_name, dni, phone })
             .eq("id", id);
@@ -105,7 +105,7 @@ export async function deleteClientAction(id: string) {
             return { success: false, error: "No tienes permisos para eliminar clientes" };
         }
 
-        const { error } = await supabase
+        const { error } = await supabaseAdmin
             .from("clients")
             .update({ is_active: false })
             .eq("id", id);
