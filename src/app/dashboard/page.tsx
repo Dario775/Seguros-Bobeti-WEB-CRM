@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { cn, getMonthName } from "@/lib/utils";
 import { getDashboardStats } from "@/app/actions/payments";
+import { supabase } from "@/lib/supabase";
 import ExpiringAlerts from "@/components/dashboard/expiring-alerts";
 import UpcomingPaymentsAlerts from "@/components/dashboard/upcoming-payments-alerts";
 
@@ -36,6 +37,16 @@ export default function DashboardPage() {
         setLoading(true);
         setError(null);
         try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+                if (profile && profile.role !== "super_admin" && profile.permissions && profile.permissions.dashboard === false) {
+                    setLoading(false);
+                    setError("ACCESS_DENIED");
+                    return;
+                }
+            }
+
             const result = await getDashboardStats(selectedMonth, selectedYear);
             if (result.success) {
                 setStats(result.data);
@@ -153,6 +164,19 @@ export default function DashboardPage() {
                     <div className="flex flex-col items-center justify-center h-64 text-slate-400">
                         <Loader2 className="w-10 h-10 animate-spin mb-4 text-primary" />
                         <p className="font-bold italic">Cargando estadísticas...</p>
+                    </div>
+                ) : error === "ACCESS_DENIED" ? (
+                    <div className="bg-slate-50 border border-slate-200 rounded-3xl p-12 text-center max-w-2xl mx-auto flex flex-col items-center">
+                        <div className="bg-slate-200 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                            <Shield className="w-8 h-8 text-slate-500" />
+                        </div>
+                        <h3 className="text-xl font-black text-slate-900 mb-2">Acceso Restringido</h3>
+                        <p className="text-slate-500 font-medium">
+                            Tu rol no tiene permisos para visualizar este panel. <br />
+                            <span className="text-xs font-black uppercase tracking-widest mt-4 block text-slate-400">
+                                Utiliza el menú lateral para navegar
+                            </span>
+                        </p>
                     </div>
                 ) : error ? (
                     <div className="bg-rose-50 border border-rose-100 rounded-3xl p-12 text-center max-w-2xl mx-auto">
