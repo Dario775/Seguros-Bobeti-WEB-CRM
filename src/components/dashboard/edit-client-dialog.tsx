@@ -1,23 +1,68 @@
 "use client";
 
-import { useState } from "react";
-import { X, User, IdCard, Phone, Loader2, Pencil } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, User, IdCard, Phone, Loader2, Pencil, ShieldPlus, Building2, Car } from "lucide-react";
 import { toast } from "sonner";
 import { updateClientAction } from "@/app/actions/clients";
+import { updatePolicyAction } from "@/app/actions/policies";
+import { supabase } from "@/lib/supabase";
 
 interface EditClientDialogProps {
     isOpen: boolean;
     onClose: () => void;
-    client: any;
+    client: any; // Contains .policies[]
 }
+
+const POLICY_TYPES = [
+    { value: "auto", label: "Automotor 🚗" },
+    { value: "hogar", label: "Hogar 🏠" },
+    { value: "vida", label: "Vida ❤️" },
+    { value: "comercio", label: "Comercio 🏪" },
+    { value: "otro", label: "Otro" },
+];
 
 export default function EditClientDialog({ isOpen, onClose, client }: EditClientDialogProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [companies, setCompanies] = useState<string[]>([]);
+
     const [formData, setFormData] = useState({
         full_name: client?.full_name || "",
         dni: client?.dni || "",
         phone: client?.phone || "",
     });
+
+    const activePolicy = client?.policies?.[0] || null;
+
+    const [policyData, setPolicyData] = useState({
+        type: activePolicy?.type || "auto",
+        company: activePolicy?.company || "",
+        dominio: activePolicy?.dominio || "",
+    });
+
+    useEffect(() => {
+        if (isOpen) {
+            setFormData({
+                full_name: client?.full_name || "",
+                dni: client?.dni || "",
+                phone: client?.phone || "",
+            });
+            const p = client?.policies?.[0] || null;
+            setPolicyData({
+                type: p?.type || "auto",
+                company: p?.company || "",
+                dominio: p?.dominio || "",
+            });
+
+            supabase.from("system_settings").select("companies").eq("id", "global").single()
+                .then(({ data }) => {
+                    const loaded = data?.companies || ["La Segunda", "RUS", "San Cristobal", "Sancor"];
+                    setCompanies(loaded);
+                    if (p && !p.company) {
+                        setPolicyData(prev => ({ ...prev, company: loaded[0] || "" }));
+                    }
+                });
+        }
+    }, [isOpen, client]);
 
     const formatDNI = (val: string) => {
         const num = val.replace(/\D/g, "");
@@ -31,19 +76,32 @@ export default function EditClientDialog({ isOpen, onClose, client }: EditClient
         setIsSubmitting(true);
 
         try {
-            const result = await updateClientAction(client.id, {
+            // Update Client
+            const resultClient = await updateClientAction(client.id, {
                 ...formData,
                 full_name: formData.full_name.toUpperCase()
             });
 
-            if (result.success) {
-                toast.success(`${formData.full_name.toUpperCase()} actualizado correctamente`);
-                onClose();
-            } else {
-                toast.error(result.error || "Error al actualizar");
+            if (!resultClient.success) {
+                toast.error(resultClient.error || "Error al actualizar asegurado");
+                setIsSubmitting(false);
+                return;
             }
+
+            // Update Policy if exists
+            if (activePolicy) {
+                const resultPolicy = await updatePolicyAction(activePolicy.id, policyData);
+                if (!resultPolicy.success) {
+                    toast.error(`Asegurado actualizado, pero sin éxito en póliza: ${resultPolicy.error}`);
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+
+            toast.success(`${formData.full_name.toUpperCase()} actualizado correctamente`);
+            onClose();
         } catch {
-            toast.error("Error inesperado");
+            toast.error("Error inesperado al guardar cambios");
         } finally {
             setIsSubmitting(false);
         }
@@ -67,44 +125,102 @@ export default function EditClientDialog({ isOpen, onClose, client }: EditClient
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-8 space-y-6">
-                    <div className="space-y-2 text-left">
-                        <label className="text-xs font-black text-slate-500 uppercase flex items-center gap-2">
-                            <User className="w-3.5 h-3.5" /> Nombre y Apellido
-                        </label>
-                        <input
-                            required type="text" placeholder="GARCIA JUAN"
-                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-bold text-slate-900 uppercase shadow-inner"
-                            value={formData.full_name}
-                            onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-6">
+                <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[75vh] overflow-y-auto no-scrollbar">
+                    {/* CLIENT FIELDS */}
+                    <div className="space-y-6">
                         <div className="space-y-2 text-left">
                             <label className="text-xs font-black text-slate-500 uppercase flex items-center gap-2">
-                                <IdCard className="w-3.5 h-3.5" /> DNI
+                                <User className="w-3.5 h-3.5" /> Nombre y Apellido
                             </label>
                             <input
-                                required type="text" placeholder="30123456"
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-mono font-bold text-slate-900 shadow-inner"
-                                value={formData.dni}
-                                onChange={(e) => setFormData({ ...formData, dni: formatDNI(e.target.value) })}
+                                required type="text" placeholder="GARCIA JUAN"
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-bold text-slate-900 uppercase shadow-inner"
+                                value={formData.full_name}
+                                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                             />
                         </div>
 
-                        <div className="space-y-2 text-left">
-                            <label className="text-xs font-black text-slate-500 uppercase flex items-center gap-2">
-                                <Phone className="w-3.5 h-3.5" /> Teléfono
-                            </label>
-                            <input
-                                type="tel" placeholder="+54 9 11 ..."
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-bold text-slate-900 shadow-inner"
-                                value={formData.phone}
-                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                            />
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2 text-left">
+                                <label className="text-xs font-black text-slate-500 uppercase flex items-center gap-2">
+                                    <IdCard className="w-3.5 h-3.5" /> DNI
+                                </label>
+                                <input
+                                    required type="text" placeholder="30123456"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-mono font-bold text-slate-900 shadow-inner"
+                                    value={formData.dni}
+                                    onChange={(e) => setFormData({ ...formData, dni: formatDNI(e.target.value) })}
+                                />
+                            </div>
+
+                            <div className="space-y-2 text-left">
+                                <label className="text-xs font-black text-slate-500 uppercase flex items-center gap-2">
+                                    <Phone className="w-3.5 h-3.5" /> Teléfono
+                                </label>
+                                <input
+                                    type="tel" placeholder="+54 9 11 ..."
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-bold text-slate-900 shadow-inner"
+                                    value={formData.phone}
+                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                />
+                            </div>
                         </div>
                     </div>
+
+                    {/* POLICY FIELDS */}
+                    {activePolicy && (
+                        <div className="pt-6 border-t border-slate-100 space-y-6">
+                            <h3 className="text-sm font-black text-emerald-800 uppercase tracking-widest flex items-center gap-2 bg-emerald-50 w-fit px-3 py-1.5 rounded-lg border border-emerald-100">
+                                <ShieldPlus className="w-4 h-4" /> Póliza Actual
+                            </h3>
+
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-slate-500 uppercase flex items-center gap-2">
+                                        <ShieldPlus className="w-3.5 h-3.5" /> Tipo
+                                    </label>
+                                    <select
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-bold text-slate-900 shadow-inner"
+                                        value={policyData.type}
+                                        onChange={(e) => setPolicyData({ ...policyData, type: e.target.value })}
+                                    >
+                                        {POLICY_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                    </select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-slate-500 uppercase flex items-center gap-2">
+                                        <Building2 className="w-3.5 h-3.5" /> Compañía
+                                    </label>
+                                    <select
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-bold text-slate-900 shadow-inner"
+                                        value={policyData.company}
+                                        onChange={(e) => setPolicyData({ ...policyData, company: e.target.value })}
+                                    >
+                                        {!companies.includes(policyData.company) && policyData.company && (
+                                            <option value={policyData.company}>{policyData.company}</option>
+                                        )}
+                                        {companies.map((c) => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                </div>
+
+                                {policyData.type === "auto" && (
+                                    <div className="space-y-2 col-span-2">
+                                        <label className="text-xs font-black text-slate-500 uppercase flex items-center gap-2">
+                                            <Car className="w-3.5 h-3.5" /> Dominio (Patente)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="Ej: AB123CD"
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-bold text-slate-900 uppercase shadow-inner"
+                                            value={policyData.dominio}
+                                            onChange={(e) => setPolicyData({ ...policyData, dominio: e.target.value })}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     <div className="pt-6 border-t flex gap-4">
                         <button type="button" disabled={isSubmitting} onClick={onClose}

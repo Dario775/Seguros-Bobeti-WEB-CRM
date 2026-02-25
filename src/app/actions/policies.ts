@@ -121,6 +121,55 @@ export async function createPolicyAction(data: any) {
     }
 }
 
+export async function updatePolicyAction(id: string, data: any) {
+    try {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return { success: false, error: "No autenticado" };
+
+        const { data: profile } = await supabaseAdmin
+            .from("profiles")
+            .select("role, permissions")
+            .eq("id", user.id)
+            .single();
+
+        const perms = (profile?.permissions as any) || {};
+        const isSuperAdmin = profile?.role === "super_admin";
+        if (!isSuperAdmin && perms.polizas_editar !== true) {
+            return { success: false, error: "No tienes permisos para editar pólizas" };
+        }
+
+        const {
+            type,
+            company,
+            dominio,
+            monthly_amount
+        } = data;
+
+        const { error } = await supabaseAdmin
+            .from("policies")
+            .update({
+                type,
+                company,
+                dominio: dominio?.toUpperCase() || null,
+                monthly_amount
+            })
+            .eq("id", id);
+
+        if (error) {
+            console.error("Policy update error:", error);
+            return { success: false, error: error.message };
+        }
+
+        revalidatePath("/dashboard/asegurar");
+        revalidatePath("/dashboard/clientes");
+        revalidatePath("/dashboard/cobranzas");
+        return { success: true };
+    } catch (err: any) {
+        return { success: false, error: err.message };
+    }
+}
+
 export async function getPoliciesAction() {
     try {
         const { data, error } = await supabaseAdmin
