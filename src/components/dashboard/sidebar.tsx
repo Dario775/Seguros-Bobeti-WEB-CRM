@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { getExpiringPoliciesAction } from "@/app/actions/policies";
+import { signOutAction } from "@/app/actions/auth";
 
 const menuItems = [
     { label: "Dashboard", icon: BarChart3, path: "/dashboard" },
@@ -58,8 +59,7 @@ export default function Sidebar() {
                 localStorage.setItem(`sb_profile_${userId}`, JSON.stringify(data));
 
                 if (data.is_active === false) {
-                    await supabase.auth.signOut();
-                    window.location.href = "/login";
+                    await signOutAction();
                 }
             } else if (error) {
                 console.error("[Sidebar] Error al cargar perfil:", error);
@@ -133,10 +133,7 @@ export default function Sidebar() {
                 }
             });
 
-            await supabase.auth.signOut();
-            // El AuthProvider debería detectar el evento SIGNED_OUT y redirigir
-            // pero lo reforzamos aquí con un hard redirect
-            window.location.href = "/login";
+            await signOutAction();
         } catch (error) {
             console.error("Error logging out:", error);
             window.location.href = "/login";
