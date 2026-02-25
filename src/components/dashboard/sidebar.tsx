@@ -39,13 +39,17 @@ export default function Sidebar() {
     const fetchProfile = async (userId: string) => {
         try {
             // Intentar recuperar de cache primero para evitar esperas
-            const cached = localStorage.getItem(`sb_profile_${userId}`);
-            if (cached) {
-                const parsedCache = JSON.parse(cached);
-                if (parsedCache.full_name !== "Cargando..." && !profile) {
-                    setProfile(parsedCache);
-                    setLoading(false); // Inmediatamente mostrar el menú si hay caché validado
+            try {
+                const cached = localStorage.getItem(`sb_profile_${userId}`);
+                if (cached) {
+                    const parsedCache = JSON.parse(cached);
+                    if (parsedCache.full_name && parsedCache.full_name !== "Cargando...") {
+                        setProfile(parsedCache);
+                        setLoading(false); // Inmediatamente mostrar el menú si hay caché validado
+                    }
                 }
+            } catch (err) {
+                console.error("[Sidebar] Cache parse error", err);
             }
 
             const { data, error } = await supabase
@@ -60,21 +64,17 @@ export default function Sidebar() {
 
                 if (data.is_active === false) {
                     await signOutAction();
+                    return;
                 }
             } else if (error) {
                 console.error("[Sidebar] Error al cargar perfil:", error);
-                // Si falla pero ya teníamos cache, no hacemos nada (mantener cache)
-                // Si no hay perfil, ponemos uno por defecto para no bloquear la UI
-                if (!profile) {
-                    setProfile({ role: 'viewer', full_name: 'Usuario', permissions: { dashboard: true, clientes: true, asegurar: true, cobranzas: true } });
-                }
+                setProfile((prev: any) => prev || { role: 'viewer', full_name: 'Usuario', permissions: { dashboard: true, clientes: true, asegurar: true, cobranzas: true } });
             } else {
-                // No hay datos (usuario nuevo sin perfil)
-                setProfile({ role: 'viewer', full_name: 'Nuevo Integrante', permissions: { dashboard: true, clientes: true, asegurar: true, cobranzas: true } });
+                setProfile((prev: any) => prev || { role: 'viewer', full_name: 'Nuevo Integrante', permissions: { dashboard: true, clientes: true, asegurar: true, cobranzas: true } });
             }
         } catch (err) {
             console.error("[Sidebar] Fetch catch:", err);
-            if (!profile) setProfile({ role: 'viewer', full_name: 'Error Perfil', permissions: { dashboard: true, clientes: true, asegurar: true, cobranzas: true } });
+            setProfile((prev: any) => prev || { role: 'viewer', full_name: 'Error Perfil', permissions: { dashboard: true, clientes: true, asegurar: true, cobranzas: true } });
         } finally {
             setLoading(false);
         }
@@ -82,25 +82,7 @@ export default function Sidebar() {
 
     useEffect(() => {
         let isMounted = true;
-
-        const checkAuth = async () => {
-            try {
-                const { data: { session }, error } = await supabase.auth.getSession();
-                if (error) throw error;
-
-                if (session?.user && isMounted) {
-                    setUserEmail(session.user.email || null);
-                    await fetchProfile(session.user.id);
-                } else if (isMounted) {
-                    setLoading(false);
-                }
-            } catch (err) {
-                console.error("[Sidebar] checkAuth error:", err);
-                if (isMounted) setLoading(false);
-            }
-        };
-
-        checkAuth();
+        let isFetching = false;
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!isMounted) return;
@@ -108,19 +90,37 @@ export default function Sidebar() {
             console.log("[Sidebar] Auth Event:", event);
             if (session?.user) {
                 setUserEmail(session.user.email || null);
-                if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
-                    await fetchProfile(session.user.id);
+                if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") {
+                    if (!isFetching) {
+                        isFetching = true;
+                        await fetchProfile(session.user.id);
+                        isFetching = false;
+                    }
                 }
-            } else if (event === "SIGNED_OUT") {
+            } else {
                 setProfile(null);
                 setUserEmail(null);
                 setLoading(false);
             }
         });
 
+        // Fail-safe para evitar que quede cargando eternamente
+        const failSafeTimeout = setTimeout(() => {
+            if (isMounted) {
+                setLoading((prev) => {
+                    if (prev) {
+                        console.warn("[Sidebar] Forced loading termination via timeout");
+                        return false;
+                    }
+                    return prev;
+                });
+            }
+        }, 5000);
+
         return () => {
             isMounted = false;
             subscription.unsubscribe();
+            clearTimeout(failSafeTimeout);
         };
     }, []);
 
